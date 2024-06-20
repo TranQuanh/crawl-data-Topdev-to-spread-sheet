@@ -24,11 +24,11 @@ def extract_mongo(page):
         collection.insert_one(job)
     
     print(page)  
-    # meta = data['meta']
-    # current_page = meta['current_page']
-    # last_page = meta['last_page']
-    # if current_page <= last_page:
-    #     extract_mongo(page+1)
+    meta = data['meta']
+    current_page = meta['current_page']
+    last_page = meta['last_page']
+    if current_page <= last_page:
+        extract_mongo(page+1)
         
 def extract_mysql():
     client = MongoClient("mongodb://localhost:27017/")
@@ -146,7 +146,7 @@ def sheet_extract():
                 job_type,
                 salary,
                 DATE_FORMAT(published, '%Y-%m-%d') AS published,
-                DATE_FORMAT(refreshed, '%Y-%m-%d') AS published
+                DATE_FORMAT(refreshed, '%Y-%m-%d') AS refreshed
             FROM topdev.jobs;"""
     df = pd.read_sql(query, cnx)
     cnx.close()
@@ -154,11 +154,11 @@ def sheet_extract():
 
     # Xác thực và ủy quyền ứng dụng
     scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
-    creds = ServiceAccountCredentials.from_json_keyfile_name('D:\VScode\DE\crawl_data\other_proj\seed\spread-sheet-api-426412-0e95742d95e1.json', scope)
+    creds = ServiceAccountCredentials.from_json_keyfile_name('D:\VScode\DE\crawl_data\proj_topdev\seed\zinc-transit-427014-m5-38621fde1e12.json', scope)
     client = gspread.authorize(creds)
 
     # Tạo một Google Sheets mới
-    spreadsheet = client.create('Job_topdev')
+    spreadsheet = client.open('PY to Gsheet Test')
     # Lấy sheet đầu tiên từ Google Sheets mới tạo
     sheet = spreadsheet.sheet1
     # Ghi dữ liệu từ DataFrame vào Google Sheets
@@ -167,12 +167,12 @@ def sheet_extract():
     print("Dữ liệu đã được chuyển thành công sang Google Sheets.")
     
 def job():
-    extract_mongo(1)
-    extract_mysql()
+    # extract_mongo(1)
+    # extract_mysql()
     sheet_extract()
-
+job()
 # schedule.every().day.at("22:00").do(job)
-schedule.every(1).minutes.do(job)
-while True:
-    schedule.run_pending()
-    time.sleep(1)
+# schedule.every(1).minutes.do(job)
+# while True:
+#     schedule.run_pending()
+#     time.sleep(1)
