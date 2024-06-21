@@ -11,10 +11,10 @@ from googleapiclient.errors import HttpError
 from google.oauth2.service_account import Credentials
 import schedule
 import time
+import DE.crawl_data.proj_topdev.connect.connect_mongodb as connect_mongodb
+import DE.crawl_data.proj_topdev.connect.connect_mysql as connect_mysql
 
-client = MongoClient("mongodb://localhost:27017/")
-db = client['Topdev']
-collection = db['Jobs']
+collection =connect_mongodb.connect_db()
 def extract_mongo(page):
     api_url = "https://api.topdev.vn/td/v2/jobs?fields[job]=id,slug,title,salary,company,extra_skills,skills_str,skills_arr,skills_ids,job_types_str,job_levels_str,job_levels_arr,job_levels_ids,addresses,status_display,detail_url,job_url,salary,published,refreshed,applied,candidate,requirements_arr,packages,benefits,content,features,is_free,is_basic,is_basic_plus,is_distinction&fields[company]=slug,tagline,addresses,skills_arr,industries_arr,industries_str,image_cover,image_galleries,benefits&page="+str(page)+"&locale=vi_VN&ordering=jobs_new"
     response =requests.get(api_url)
@@ -31,16 +31,11 @@ def extract_mongo(page):
         extract_mongo(page+1)
         
 def extract_mysql():
-    client = MongoClient("mongodb://localhost:27017/")
-    db = client['Topdev']
-    collection = db['Jobs']
     mongo_data = collection.find()
-    mysql_conn = mysql.connector.connect(
-            host = 'localhost',
-            user = 'root',
-            password = 'taolaquanh',    
-            database = 'topdev'
-        )
+    db_config = connect_mysql.mysql
+
+    # Kết nối tới cơ sở dữ liệu
+    mysql_conn = mysql.connector.connect(**db_config)
     ## Create cursor, used to execute commands
     mysql_cur = mysql_conn.cursor()
         
@@ -117,6 +112,7 @@ def extract_mysql():
             )"""
                        
         values = (title,full_address,company_name,detail_url,job_level,skills,job_type,salary_job,datetime.strptime(published_date, '%d-%m-%Y').date(),datetime.strptime(refreshed_date, '%d-%m-%Y').date())
+    # them log 
         mysql_cur.execute(sql, values)
     # Lưu thay đổi
     mysql_conn.commit()
@@ -128,13 +124,7 @@ def extract_mysql():
     
     
 def sheet_extract():
-    db_config = {
-    'host' : 'localhost',
-    'user' : 'root',
-    'password' : 'taolaquanh',    
-    'database' :'topdev',
-    'port': '3306'  
-    }
+    db_config = connect_mysql.mysql_config
 
     # Kết nối tới cơ sở dữ liệu
     cnx = mysql.connector.connect(**db_config)
@@ -162,17 +152,17 @@ def sheet_extract():
     # Lấy sheet đầu tiên từ Google Sheets mới tạo
     sheet = spreadsheet.sheet1
     # Ghi dữ liệu từ DataFrame vào Google Sheets
+    sheet.delete_rows()
     sheet.update([df.columns.values.tolist()] + df.values.tolist())
     
     print("Dữ liệu đã được chuyển thành công sang Google Sheets.")
     
 def job():
-    # extract_mongo(1)
-    # extract_mysql()
+    extract_mongo(1)
+    extract_mysql()
     sheet_extract()
 job()
 # schedule.every().day.at("22:00").do(job)
-# schedule.every(1).minutes.do(job)
 # while True:
 #     schedule.run_pending()
 #     time.sleep(1)
